@@ -44,5 +44,12 @@ Settings are defaulted to what is most in-line with vanilla Endless, description
   - Weighted chance for each fragment to be a rest site.
   - Does not count towards fragments completed for "Item Frequency".
   - Default: 0
+- Heal Each Stage:
+  - Heals you this amount between each fragment.
+  - Must be greater than 0 to have an effect.
+  - Default: 25
+- Life Regen Frequency:
+  - The number of fragments you must complete to regain a life.
+  - Default: 3
 
 This mod overrides the "OnLevelCompleted" functionality within Endless Mode, as well as the "EndlessAward" functionality. As such, it will very likely be incompatible with any other mod that also overrides those functionalities.

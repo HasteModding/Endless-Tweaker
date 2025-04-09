@@ -2,6 +2,7 @@
 using Landfall.Haste;
 using Landfall.Modding;
 using UnityEngine;
+using UnityEngine.InputSystem.Controls;
 using UnityEngine.Localization;
 using UnityEngine.SceneManagement;
 using Zorro.Settings;
@@ -28,6 +29,7 @@ public class Program
                 //Debug.Log("<<ET>> Biome: " + RunHandler.selectedBiome);
                 //Debug.Log("<<ET>> Config: " + RunHandler.configOverride);
                 //Debug.Log("<<ET>> NodeType: " + RunHandler.RunData.currentNodeType);
+
                 RunHandler.RunData.currentLevelID++;
                 RunHandler.RunData.currentLevel++;
                 Player.localPlayer.data.resource += Player.localPlayer.data.temporaryResource;
@@ -48,6 +50,7 @@ public class Program
             int optionCount = GameHandler.Instance.SettingsHandler.GetSetting<RewardOptionsSetting>().Value;
 
             int maxItems = GameHandler.Instance.SettingsHandler.GetSetting<MaxItemSetting>().Value;
+                if (maxItems < 0) maxItems = int.MaxValue;
             int itemCount = RunHandler.RunData.itemData.Count();
             bool canGetMoreItems = itemCount + 1 < maxItems;
 
@@ -84,11 +87,16 @@ public class Program
         };
     }
 
-    private static GameObject GetBiome()
+    private static void AddHealthReflect(Player localPlayer, float amount)
+    {
+        MethodInfo getAddHealthMethod = typeof(Player).GetMethod("AddHealth", BindingFlags.Instance | BindingFlags.NonPublic);
+        getAddHealthMethod.Invoke(localPlayer, [ amount ]);
+    }
+    private static GameObject GetBiomeReflect()
     {
         // Thank you to @stevelion in the Haste Discord for helping me figure this part out!
         MethodInfo getBiomeMethod = typeof(RunConfig).GetMethod("GetBiome", BindingFlags.Instance | BindingFlags.NonPublic);
-        return (GameObject)getBiomeMethod.Invoke(RunHandler.config, new object[] { RunHandler.GetCurrentLevelRandomInstance() });
+        return (GameObject)getBiomeMethod.Invoke(RunHandler.config, [ RunHandler.GetCurrentLevelRandomInstance() ]);
     }
     private static void RunScene()
     {
@@ -104,6 +112,7 @@ public class Program
         bool immediateItem = GameHandler.Instance.SettingsHandler.GetSetting<ImmediateItemSetting>().Value == OffOnMode.ON;
         int frequency = GameHandler.Instance.SettingsHandler.GetSetting<FrequencySetting>().Value;
         int maxItems = GameHandler.Instance.SettingsHandler.GetSetting<MaxItemSetting>().Value;
+            if (maxItems < 0) maxItems = int.MaxValue;
         int itemCount = RunHandler.RunData.itemData.Count();
         bool canGetMoreItems = itemCount < maxItems;
 
@@ -155,10 +164,28 @@ public class Program
         {
             Debug.Log("<<ET>> Sending to Default");
             //RunHandler.selectedBiome = RunHandler.config.GetBiome(RunHandler.GetCurrentLevelRandomInstance());
-                RunHandler.selectedBiome = GetBiome();
+                RunHandler.selectedBiome = GetBiomeReflect();
                 RunHandler.configOverride = null;
             //RunHandler.LoadLevelScene();
                 RunScene();
+        }
+
+        if (RunHandler.InRun && !fromAward) 
+        {
+            //Debug.Log("<<ET>> Add Health per Level Completed: " + RunHandler.config.addHealthPerLevelCompleted); // 25
+            //Debug.Log("<<ET>> Add Life Every N Levels: " + RunHandler.config.addLifeEveryNLevels); // 3
+
+            int stageHealAmount = GameHandler.Instance.SettingsHandler.GetSetting<StageHealSetting>().Value;
+            int stageLifeFrequency = GameHandler.Instance.SettingsHandler.GetSetting<StageLifeSetting>().Value;
+
+            if (stageHealAmount > 0)
+            {
+                AddHealthReflect(Player.localPlayer, stageHealAmount);
+            }
+            if (stageLifeFrequency > 0 && RunHandler.RunData.currentLevel % stageLifeFrequency == 0)
+            {
+                Player.localPlayer.EditLives(1);
+            }
         }
     }
 }
@@ -264,4 +291,19 @@ public class RestChanceSetting : IntSetting, IExposedSetting
     public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
     protected override int GetDefaultValue() => 0;
 }
-
+[HasteSetting]
+public class StageHealSetting : IntSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Heal Each Stage");
+    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+    protected override int GetDefaultValue() => 25;
+}
+[HasteSetting]
+public class StageLifeSetting : IntSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Life Regen Frequency");
+    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+    protected override int GetDefaultValue() => 3;
+}

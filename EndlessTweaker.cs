@@ -14,6 +14,8 @@ public class Program
 {
     
     private static int extraReward = 0;
+    private static int shopCount = 0;
+    private static int restCount = 0;
 
     static Program()
     {
@@ -122,7 +124,7 @@ public class Program
         int restChance = shopChance + GameHandler.Instance.SettingsHandler.GetSetting<RestChanceSetting>().Value;
         int maxWeight = restChance + GameHandler.Instance.SettingsHandler.GetSetting<NormalChanceSetting>().Value; // Normal is the final else, so also acts as MaxWeight
 
-        int roll = (int)(Math.Floor(RunHandler.GetCurrentLevelRandomInstance().NextFloat() * maxWeight));
+        int roll = (int)(Math.Floor(new System.Random(RunHandler.GetCurrentLevelSeed(shopCount + restCount)).NextFloat() * maxWeight));
 
         bool giveReward = itemsEnabled; // Master Toggle for run-based rewards
             if (RunHandler.RunData.currentLevel == 1) giveReward = giveReward && immediateItem; // If just finished first stage, give item if ImmediateItem setting
@@ -150,14 +152,16 @@ public class Program
             RunHandler.configOverride = (LevelGenConfig)Resources.Load("Ethereal");
             RunScene();
         }
-        else if ((roll + challengeChance) < shopChance)
+        else if ((roll) < shopChance)
         {
             Debug.Log("<<ET>> Sending to Shop");
+            shopCount++;
             RunHandler.TransitionToShop();
         }
-        else if ((roll + challengeChance + shopChance) < restChance)
+        else if ((roll) < restChance)
         {
             Debug.Log("<<ET>> Sending to Rest");
+            restCount++;
             RunHandler.PlayRestScene();
         }
         else

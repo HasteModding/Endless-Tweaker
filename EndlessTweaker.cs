@@ -1,8 +1,8 @@
 ﻿using System.Reflection;
 using Landfall.Haste;
+using Landfall.Haste.Music;
 using Landfall.Modding;
 using UnityEngine;
-using UnityEngine.InputSystem.Controls;
 using UnityEngine.Localization;
 using UnityEngine.SceneManagement;
 using Zorro.Settings;
@@ -16,12 +16,29 @@ public class Program
     private static int extraReward = 0;
     private static int shopCount = 0;
     private static int restCount = 0;
+    private static bool inAward = false;
 
     static Program()
     {
         Debug.Log("[Endless Tweaker] Initializing!");
-        //new Harmony("Yawrf.EndlessTweaker").PatchAll();
 
+        On.RunHandler.StartNewRun += (orig, setConfig, shardID, seed) =>
+        {
+            resetEndlessBossStats();
+            orig(setConfig, shardID, seed);
+        };
+
+        On.RunHandler.WinRun += (orig, transitionOutOverride) =>
+        {
+            if (RunHandler.isEndless)
+            {
+                RunHandler.OnLevelCompleted();
+            }
+            else
+            {
+                orig(transitionOutOverride);
+            }
+        };
 
         On.RunHandler.OnLevelCompleted += (orig) =>
         {
@@ -36,7 +53,7 @@ public class Program
                 RunHandler.RunData.currentLevel++;
                 Player.localPlayer.data.resource += Player.localPlayer.data.temporaryResource;
 
-                RunNextScene(false);
+                RunNextScene();
 
                 HasteStats.SetStat(HasteStatType.STAT_ENDLESS_HIGHSCORE, RunHandler.RunData.currentLevel, onlyInc: true);
                 HasteStats.OnLevelComplete();
@@ -49,6 +66,7 @@ public class Program
 
         On.EndlessAward.Start += (orig, self) =>
         {
+            inAward = true;
             int optionCount = GameHandler.Instance.SettingsHandler.GetSetting<RewardOptionsSetting>().Value;
 
             int maxItems = GameHandler.Instance.SettingsHandler.GetSetting<MaxItemSetting>().Value;
@@ -74,7 +92,8 @@ public class Program
                     }
                     else
                     {
-                        RunNextScene(true);
+                        UI_TransitionHandler.instance.Transition(RunNextScene, "Dots", 0.3f, 0.5f);
+                        //RunNextScene();
                     }
                 });
         };
@@ -83,7 +102,9 @@ public class Program
         {
             if (RunHandler.isEndless)
             {
-                RunNextScene(true);
+                MusicPlayer.Instance.ChangePlaylist(RunHandler.RunData.runConfig.musicPlaylist);
+                UI_TransitionHandler.instance.Transition(RunNextScene, "Dots", 0.3f, 0.5f);
+                //RunNextScene(true);
             }
             else orig();
         };
@@ -94,22 +115,105 @@ public class Program
         MethodInfo getAddHealthMethod = typeof(Player).GetMethod("AddHealth", BindingFlags.Instance | BindingFlags.NonPublic);
         getAddHealthMethod.Invoke(localPlayer, [ amount ]);
     }
+    private static void LoadLevelSceneReflect()
+    {
+        MethodInfo LoadLevelSceneMethod = typeof(RunHandler).GetMethod("LoadLevelScene", BindingFlags.Static | BindingFlags.NonPublic);
+        LoadLevelSceneMethod.Invoke(null, []);
+    }
     private static GameObject GetBiomeReflect()
     {
         // Thank you to @stevelion in the Haste Discord for helping me figure this part out!
         MethodInfo getBiomeMethod = typeof(RunConfig).GetMethod("GetBiome", BindingFlags.Instance | BindingFlags.NonPublic);
         return (GameObject)getBiomeMethod.Invoke(RunHandler.config, [ RunHandler.GetCurrentLevelRandomInstance() ]);
     }
-    private static void RunScene()
+    private static bool[] jumper = [false, false];
+    private static bool[] convoy = [false, false];
+    private static bool[] snake  = [false, false];
+    private static void resetEndlessBossStats()
     {
-        UI_TransitionHandler.instance.Transition(() =>
-        {
-            SceneManager.LoadScene("RunScene", LoadSceneMode.Single);
-            Debug.Log("Starting level");
-        }, "Dots", 0.3f, 0.5f);
+        jumper = [false, false];
+        convoy = [false, false];
+        snake  = [false, false];
     }
-    private static void RunNextScene(bool fromAward)
+    private static void GoToBoss()
     {
+        int jumperWeight = GameHandler.Instance.SettingsHandler.GetSetting<JumperWeightSetting>().Value;
+        int convoyWeight = jumperWeight + GameHandler.Instance.SettingsHandler.GetSetting<ConvoyWeightSetting>().Value;
+        int snakeWeight = convoyWeight + GameHandler.Instance.SettingsHandler.GetSetting<SnakeWeightSetting>().Value;
+
+        string[] bossScenes = ["Challenge_ForestBoss", "Challenge_DesertBoss", "Challenge_SnakeBoss"];
+
+        int roll = (int)Math.Floor(RunHandler.GetCurrentLevelRandomInstance().NextFloat() * snakeWeight);
+        string boss;
+        int level = 1;
+
+        if(roll < jumperWeight)
+        {
+            boss = bossScenes[0];
+        } else if (roll < convoyWeight)
+        {
+            boss = bossScenes[1];
+        } else
+        {
+            boss = bossScenes[2];
+        }
+
+        switch (boss)
+        {
+            case "Challenge_ForestBoss":
+                {
+                    level += jumper[0] ? 1 : 0;
+                    level += jumper[1] ? 1 : 0;
+                }
+                break;
+            case "Challenge_DesertBoss":
+                {
+                    level += convoy[0] ? 1 : 0;
+                    level += convoy[1] ? 1 : 0;
+                }
+                break;
+            case "Challenge_SnakeBoss":
+                {
+                    level += snake[0] ? 1 : 0;
+                    level += snake[1] ? 1 : 0;
+                }
+                break;
+        }
+
+        level = (int)Math.Floor(RunHandler.GetCurrentLevelRandomInstance().NextFloat() * level);
+
+        if (level < 2)
+        {
+            switch (boss)
+            {
+                case "Challenge_ForestBoss":
+                    {
+                        jumper[level] = true;
+                    }
+                    break;
+                case "Challenge_DesertBoss":
+                    {
+                        convoy[level] = true;
+                    }
+                    break;
+                case "Challenge_SnakeBoss":
+                    {
+                        snake[level] = true;
+                    }
+                    break;
+            }
+        }
+
+        RunHandler.config.bossScene = boss;
+        RunHandler.config.bossTeir = level;
+
+        RunHandler.RunData.currentNodeType = LevelSelectionNode.NodeType.Boss;
+        RunHandler.TransitionToBoss();
+    }
+    private static void RunNextScene()
+    {
+        bool fromAward = inAward || RunHandler.RunData.currentNodeType == LevelSelectionNode.NodeType.Shop || RunHandler.RunData.currentNodeType == LevelSelectionNode.NodeType.RestStop;
+            inAward = false;
         bool itemsEnabled = GameHandler.Instance.SettingsHandler.GetSetting<ItemsEnabledSetting>().Value == OffOnMode.ON;
         bool immediateItem = GameHandler.Instance.SettingsHandler.GetSetting<ImmediateItemSetting>().Value == OffOnMode.ON;
         int frequency = GameHandler.Instance.SettingsHandler.GetSetting<FrequencySetting>().Value;
@@ -118,9 +222,17 @@ public class Program
         int itemCount = RunHandler.RunData.itemData.Count();
         bool canGetMoreItems = itemCount < maxItems;
 
+        bool bossInterval = GameHandler.Instance.SettingsHandler.GetSetting<BossMethodSetting>().Value == OffOnMode.ON;
+        int bossNum = GameHandler.Instance.SettingsHandler.GetSetting<BossNumberSetting>().Value;
+        int bossMinFloors = GameHandler.Instance.SettingsHandler.GetSetting<BossMinFloorsSetting>().Value;
+        bool bossElegible = RunHandler.RunData.currentLevel >= bossMinFloors;
+            if(!bossElegible && !bossInterval) bossNum = 0;
+
         int challengeChance = GameHandler.Instance.SettingsHandler.GetSetting<ChallengeChanceSetting>().Value;
         bool challengeReward = GameHandler.Instance.SettingsHandler.GetSetting<ChallengeRewardSetting>().Value == OffOnMode.ON;
-        int shopChance = challengeChance + GameHandler.Instance.SettingsHandler.GetSetting<ShopChanceSetting>().Value; 
+        bool bossReward = GameHandler.Instance.SettingsHandler.GetSetting<BossRewardSetting>().Value == OffOnMode.ON;
+        if (!bossInterval) bossNum += challengeChance;
+        int shopChance = ( bossInterval ? challengeChance : bossNum ) + GameHandler.Instance.SettingsHandler.GetSetting<ShopChanceSetting>().Value; 
         int restChance = shopChance + GameHandler.Instance.SettingsHandler.GetSetting<RestChanceSetting>().Value;
         int maxWeight = restChance + GameHandler.Instance.SettingsHandler.GetSetting<NormalChanceSetting>().Value; // Normal is the final else, so also acts as MaxWeight
 
@@ -134,7 +246,12 @@ public class Program
         {
             if (!giveReward) giveReward = true; // If just finished Challenge frag and ChallengeReward, override true
             else extraReward++; // If already giving reward, signal to give extra reward
-        }
+        } 
+        if (canGetMoreItems && RunHandler.RunData.currentNodeType == LevelSelectionNode.NodeType.Boss && bossReward)
+        {
+            if (!giveReward) giveReward = true; // If just finished Boss frag and BossReward, override true
+            else extraReward++; // If already giving reward, signal to give extra reward
+        } 
 
         RunHandler.RunData.currentNodeType = LevelSelectionNode.NodeType.Default;
         Debug.Log("<<ET>> MaxWeight: " + maxWeight);
@@ -145,23 +262,34 @@ public class Program
             Debug.Log("<<ET>> Sending to EndlessAward");
             SceneManager.LoadScene("EndlessAwardScene");
         }
+        else if (bossInterval && bossElegible && RunHandler.RunData.currentLevel % bossNum == 0)
+        {
+            Debug.Log("<<ET>> Sending to Boss via Interval");
+            GoToBoss();
+        }
         else if (roll < challengeChance)
         {
             Debug.Log("<<ET>> Sending to Challenge");
             RunHandler.RunData.currentNodeType = LevelSelectionNode.NodeType.Challenge;
-            RunHandler.configOverride = (LevelGenConfig)Resources.Load("Ethereal");
-            RunScene();
+            RunHandler.PlayChallenge();
+        }
+        else if (!bossInterval && bossElegible && roll < bossNum)
+        {
+            Debug.Log("<<ET>> Sending to Boss via Chance");
+            GoToBoss();
         }
         else if ((roll) < shopChance)
         {
             Debug.Log("<<ET>> Sending to Shop");
             shopCount++;
+            RunHandler.RunData.currentNodeType = LevelSelectionNode.NodeType.Shop;
             RunHandler.TransitionToShop();
         }
         else if ((roll) < restChance)
         {
             Debug.Log("<<ET>> Sending to Rest");
             restCount++;
+            RunHandler.RunData.currentNodeType = LevelSelectionNode.NodeType.RestStop;
             RunHandler.PlayRestScene();
         }
         else
@@ -171,7 +299,7 @@ public class Program
                 RunHandler.selectedBiome = GetBiomeReflect();
                 RunHandler.configOverride = null;
             //RunHandler.LoadLevelScene();
-                RunScene();
+                LoadLevelSceneReflect();
         }
 
         if (RunHandler.InRun && !fromAward) 
@@ -278,6 +406,74 @@ public class ChallengeRewardSetting : OffOnSetting, IExposedSetting
         new UnlocalizedString("Enabled")
 
     };
+}
+[HasteSetting]
+public class BossMethodSetting : OffOnSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Should Boss stages be chance or interval?");
+    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+    protected override OffOnMode GetDefaultValue() => OffOnMode.OFF;
+    public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+    {
+        new UnlocalizedString("Chance"),
+        new UnlocalizedString("Interval")
+
+    };
+}
+[HasteSetting]
+public class BossNumberSetting : IntSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Boss Weight/Interval");
+    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+    protected override int GetDefaultValue() => 0;
+}
+[HasteSetting]
+public class BossMinFloorsSetting : IntSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Minimum Floors before Bosses (will override Interval)");
+    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+    protected override int GetDefaultValue() => 5;
+}
+[HasteSetting]
+public class BossRewardSetting : OffOnSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Give Item on Boss Complete (Overrides Allow Items setting)");
+    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+    protected override OffOnMode GetDefaultValue() => OffOnMode.ON;
+    public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+    {
+        new UnlocalizedString("Disabled"),
+        new UnlocalizedString("Enabled")
+
+    };
+}
+[HasteSetting]
+public class JumperWeightSetting : IntSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Jumper Boss Weight");
+    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+    protected override int GetDefaultValue() => 10;
+}
+[HasteSetting]
+public class ConvoyWeightSetting : IntSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Convoy Boss Weight");
+    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+    protected override int GetDefaultValue() => 10;
+}
+[HasteSetting]
+public class SnakeWeightSetting : IntSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Snake Boss Weight");
+    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+    protected override int GetDefaultValue() => 10;
 }
 [HasteSetting]
 public class ShopChanceSetting : IntSetting, IExposedSetting

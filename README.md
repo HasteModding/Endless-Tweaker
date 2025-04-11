@@ -2,6 +2,8 @@
 
 This mod aims to make the Endless Mode as customizable as possible, adding control over how frequently you get items, but even control over the fragments you find!
 
+If Bosses are enabled, you must defeat each tier of a boss before you can encounter the next tier. Tiers are randomly determined from what you have unlocked that run.
+
 Settings are defaulted to what is most in-line with vanilla Endless, descriptions are listed below:
 
 - Allow Items in Endless:
@@ -35,6 +37,32 @@ Settings are defaulted to what is most in-line with vanilla Endless, description
   - This will override the "Items Enabled" setting and will allow you to get items from challenge fragments.
   - This will not override the "Maximum Items" setting.
   - Default: Enabled
+- Should Boss stages be chance or interval?
+  - Toggle between having boss rooms on consistent intervals or having a random chance like the other room types.
+  - Default: Chance
+- Boss Weight/Interval:
+  - Chooses the Weight or Interval of Boss rooms.
+  - As implied, if Boss stages are set to Chance, it'll set a weight like any other room has, otherwise it'll set the interval that you get boss stages.
+  - Default: 0
+- Minimum Floors before Bosses
+  - This many fragments must be completed before bosses can be found.
+  - This overrides both Interval and Chance based Boss rooms.
+  - Default: 5
+- Give Item on Boss Complete
+  - If enabled, this will give an extra item reward after completing a Boss room.
+  - This will stack with "Item Frequency" items to give two items after a boss if it lines up that way.
+  - This will override the "Items Enabled" setting and will allow you to get items from boss rooms.
+  - This will not override the "Maximum Items" setting.
+  - Default: Enabled
+- Jumper Boss Weight:
+  - Weighted chance for each Boss room to be Jumper.
+  - Default: 10
+- Convoy Boss Weight:
+  - Weighted chance for each Boss room to be Convoy.
+  - Default: 10
+- Snake Boss Weight: 
+  - Weighted chance for each Boss room to be Snake.
+  - Default: 10
 - Shop Chance Weight:
   - Weighted chance for each fragment to be a shop.
   - Does not count towards fragments completed for "Item Frequency".

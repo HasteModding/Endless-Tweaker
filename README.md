@@ -80,4 +80,5 @@ Settings are defaulted to what is most in-line with vanilla Endless, description
   - The number of fragments you must complete to regain a life.
   - Default: 3
 
-This mod overrides the "OnLevelCompleted" functionality within Endless Mode, as well as the "EndlessAward" functionality. As such, it will very likely be incompatible with any other mod that also overrides those functionalities.
+This mod overrides the "OnLevelCompleted" functionality within Endless Mode, the "EndlessAward" functionality, and the "WinRun" functionality within Endless.
+As such, it will very likely be incompatible with any other mod that also overrides those functionalities.

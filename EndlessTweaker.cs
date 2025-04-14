@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.Localization;
 using UnityEngine.SceneManagement;
 using Zorro.Settings;
+using SettingsLib.Settings;
 
 namespace EndlessTweaker;
 
@@ -19,7 +20,7 @@ public class Program
     private static bool inAward = false;
 
     static Program()
-    {
+    { 
         Debug.Log("[Endless Tweaker] Initializing!");
 
         On.RunHandler.StartNewRun += (orig, setConfig, shardID, seed) =>
@@ -326,89 +327,118 @@ public class Program
 // The HasteSetting attribute is equivalent to
 // GameHandler.Instance.SettingsHandler.AddSetting(new HelloSetting());
 [HasteSetting]
-public class ItemsEnabledSetting : OffOnSetting, IExposedSetting
+public class ItemSettingsCollapsible : CollapsibleSetting, IExposedSetting
 {
     public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Allow Items in Endless");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override OffOnMode GetDefaultValue() => OffOnMode.ON;
-    public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Item Settings");
+    public ItemsEnabledSetting ItemsEnabledSetting = new ItemsEnabledSetting();
+    public ImmediateItemSetting ImmediateItemSetting = new ImmediateItemSetting();
+    public FrequencySetting FrequencySetting = new FrequencySetting();
+    public MaxItemSetting MaxItemSetting = new MaxItemSetting();
+    public RewardOptionsSetting RewardOptionsSetting = new RewardOptionsSetting();
+    public ChallengeRewardSetting ChallengeRewardSetting = new ChallengeRewardSetting();
+    public BossRewardSetting BossRewardSetting = new BossRewardSetting();
+}
+    public class ItemsEnabledSetting : OffOnSetting, IExposedSetting
     {
-        new UnlocalizedString("Disabled"),
-        new UnlocalizedString("Enabled")
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Allow Items in Endless");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override OffOnMode GetDefaultValue() => OffOnMode.ON;
+        public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+        {
+            new UnlocalizedString("Disabled"),
+            new UnlocalizedString("Enabled")
 
-    };
-}
-[HasteSetting]
-public class ImmediateItemSetting : OffOnSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Give Item after first Fragment");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override OffOnMode GetDefaultValue() => OffOnMode.ON;
-    public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+        };
+    }
+    public class ImmediateItemSetting : OffOnSetting, IExposedSetting
     {
-        new UnlocalizedString("Disabled"),
-        new UnlocalizedString("Enabled")
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Give Item after first Fragment");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override OffOnMode GetDefaultValue() => OffOnMode.ON;
+        public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+        {
+            new UnlocalizedString("Disabled"),
+            new UnlocalizedString("Enabled")
 
-    };
-}
-[HasteSetting]
-public class FrequencySetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Item Frequency");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 5;
-}
-[HasteSetting]
-public class MaxItemSetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Maximum Items (Negative for No Limit)");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => -1;
-}
-[HasteSetting]
-public class RewardOptionsSetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Reward Items to Choose From");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 3;
-}
-[HasteSetting]
-public class NormalChanceSetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Normal Chance Weight");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 100;
-}
-[HasteSetting]
-public class ChallengeChanceSetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Challenge Chance Weight");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 0;
-}
-[HasteSetting]
-public class ChallengeRewardSetting : OffOnSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Give Item on Challenge Complete (Overrides Allow Items setting)");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override OffOnMode GetDefaultValue() => OffOnMode.ON;
-    public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+        };
+    }
+    public class FrequencySetting : IntSetting, IExposedSetting
     {
-        new UnlocalizedString("Disabled"),
-        new UnlocalizedString("Enabled")
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Item Frequency");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 5;
+    }
+    public class MaxItemSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Maximum Items (Negative for No Limit)");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => -1;
+    }
+    public class RewardOptionsSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Reward Items to Choose From");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 3;
+    }
+    public class ChallengeRewardSetting : OffOnSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Give Item on Challenge Complete (Overrides Allow Items setting)");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override OffOnMode GetDefaultValue() => OffOnMode.ON;
+        public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+        {
+            new UnlocalizedString("Disabled"),
+            new UnlocalizedString("Enabled")
 
-    };
-}
+        };
+    }
+    public class BossRewardSetting : OffOnSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Give Item on Boss Complete (Overrides Allow Items setting)");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override OffOnMode GetDefaultValue() => OffOnMode.ON;
+        public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+        {
+            new UnlocalizedString("Disabled"),
+            new UnlocalizedString("Enabled")
+
+        };
+    }
 [HasteSetting]
-public class BossMethodSetting : OffOnSetting, IExposedSetting
+public class FragmentCollapsible : CollapsibleSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Fragment Settings");
+    public NormalChanceSetting NormalChanceSetting = new NormalChanceSetting();
+    public ChallengeChanceSetting ChallengeChanceSetting = new ChallengeChanceSetting();
+    public BossMethodSetting BossMethodSetting = new BossMethodSetting();
+    public BossNumberSetting BossNumberSetting = new BossNumberSetting();
+    public ShopChanceSetting ShopChanceSetting = new ShopChanceSetting();
+    public RestChanceSetting RestChanceSetting = new RestChanceSetting();
+}
+    public class NormalChanceSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Normal Chance Weight");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 100;
+    }
+    public class ChallengeChanceSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Challenge Chance Weight");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 0;
+    }
+    public class BossMethodSetting : OffOnSetting, IExposedSetting
 {
     public string GetCategory() => "EndlessTweaker";
     public LocalizedString GetDisplayName() => new UnlocalizedString("Should Boss stages be chance or interval?");
@@ -421,89 +451,84 @@ public class BossMethodSetting : OffOnSetting, IExposedSetting
 
     };
 }
-[HasteSetting]
-public class BossNumberSetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Boss Weight/Interval");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 0;
-}
-[HasteSetting]
-public class BossMinFloorsSetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Minimum Floors before Bosses (will override Interval)");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 5;
-}
-[HasteSetting]
-public class BossRewardSetting : OffOnSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Give Item on Boss Complete (Overrides Allow Items setting)");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override OffOnMode GetDefaultValue() => OffOnMode.ON;
-    public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+    public class BossNumberSetting : IntSetting, IExposedSetting
     {
-        new UnlocalizedString("Disabled"),
-        new UnlocalizedString("Enabled")
-
-    };
-}
-[HasteSetting]
-public class JumperWeightSetting : IntSetting, IExposedSetting
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Boss Weight/Interval");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 0;
+    }
+    public class ShopChanceSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Shop Chance Weight");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 0;
+    }
+    public class RestChanceSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Rest Chance Weight");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 0;
+    }
+[HasteSetting] 
+public class BossSettingsCollapsible : CollapsibleSetting, IExposedSetting
 {
     public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Jumper Boss Weight");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 10;
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Boss Settings");
+    public BossMinFloorsSetting BossMinFloorsSetting = new BossMinFloorsSetting();
+    public JumperWeightSetting JumperWeightSetting = new JumperWeightSetting();
+    public ConvoyWeightSetting ConvoyWeightSetting = new ConvoyWeightSetting();
+    public SnakeWeightSetting SnakeWeightSetting = new SnakeWeightSetting();
 }
+    public class BossMinFloorsSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Minimum Floors before Bosses (will override Interval)");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 5;
+    }
+    public class JumperWeightSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Jumper Boss Weight");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 10;
+    }
+    public class ConvoyWeightSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Convoy Boss Weight");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 10;
+    }
+    public class SnakeWeightSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Snake Boss Weight");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 10;
+    }
 [HasteSetting]
-public class ConvoyWeightSetting : IntSetting, IExposedSetting
+public class HealingCollapsible : CollapsibleSetting, IExposedSetting
 {
     public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Convoy Boss Weight");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 10;
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Healing Settings");
+    public StageHealSetting StageHeal = new StageHealSetting();
+    public StageLifeSetting StageLifeSetting = new StageLifeSetting();
 }
-[HasteSetting]
-public class SnakeWeightSetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Snake Boss Weight");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 10;
-}
-[HasteSetting]
-public class ShopChanceSetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Shop Chance Weight");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 0;
-}
-[HasteSetting]
-public class RestChanceSetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Rest Chance Weight");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 0;
-}
-[HasteSetting]
-public class StageHealSetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Heal Each Stage");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 25;
-}
-[HasteSetting]
-public class StageLifeSetting : IntSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Life Regen Frequency");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override int GetDefaultValue() => 3;
-}
+    public class StageHealSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Heal Each Stage");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 25;
+    }
+    public class StageLifeSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Life Regen Frequency");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 3;
+    }

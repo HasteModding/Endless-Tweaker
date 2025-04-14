@@ -27,6 +27,9 @@
         <Reference Include="0Harmony">
           <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\1796470\3408901301\0Harmony.dll</HintPath>
         </Reference>
+        <Reference Include="SettingsLib">
+          <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\1796470\3462196533\SettingsLib.dll</HintPath>
+        </Reference>
         <!-- Harmony -->
         <!-- <Reference Include="C:\Program Files (x86)\Steam\steamapps\workshop\content\1796470\3385184093\*.dll" Private="false"/> -->
     </ItemGroup>

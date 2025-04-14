@@ -6,6 +6,7 @@ If Bosses are enabled, you must defeat each tier of a boss before you can encoun
 
 Settings are defaulted to what is most in-line with vanilla Endless, descriptions are listed below:
 
+[Item Settings]
 - Allow Items in Endless:
   - Controls whether or not you'll get items at all from the initial fragment and from the recurring frequency after.
   - Default: Enabled
@@ -25,18 +26,26 @@ Settings are defaulted to what is most in-line with vanilla Endless, description
   - If set over 9, you may not be able to see all of them.
   - Behavior is untested and unsupported for values less than 1.
   - Default: 3
-- Normal Chance Weight:
-  - Weighted chance for each fragment to be a standard run.
-  - Default: 100
-- Challenge Chance Weight:
-  - Weighted chance for each fragment to be a challenge run.
-  - Default: 0
 - Give Item on Challenge Complete:
   - Similar to running a shard normally, if enabled this will give an extra item reward after completing a challenge fragment.
   - This will stack with "Item Frequency" items to give two items after a fragment if it lines up that way.
   - This will override the "Items Enabled" setting and will allow you to get items from challenge fragments.
   - This will not override the "Maximum Items" setting.
   - Default: Enabled
+- Give Item on Boss Complete
+  - If enabled, this will give an extra item reward after completing a Boss room.
+  - This will stack with "Item Frequency" items to give two items after a boss if it lines up that way.
+  - This will override the "Items Enabled" setting and will allow you to get items from boss rooms.
+  - This will not override the "Maximum Items" setting.
+  - Default: Enabled
+
+[Fragment Settings]
+- Normal Chance Weight:
+  - Weighted chance for each fragment to be a standard run.
+  - Default: 100
+- Challenge Chance Weight:
+  - Weighted chance for each fragment to be a challenge run.
+  - Default: 0
 - Should Boss stages be chance or interval?
   - Toggle between having boss rooms on consistent intervals or having a random chance like the other room types.
   - Default: Chance
@@ -44,25 +53,6 @@ Settings are defaulted to what is most in-line with vanilla Endless, description
   - Chooses the Weight or Interval of Boss rooms.
   - As implied, if Boss stages are set to Chance, it'll set a weight like any other room has, otherwise it'll set the interval that you get boss stages.
   - Default: 0
-- Minimum Floors before Bosses
-  - This many fragments must be completed before bosses can be found.
-  - This overrides both Interval and Chance based Boss rooms.
-  - Default: 5
-- Give Item on Boss Complete
-  - If enabled, this will give an extra item reward after completing a Boss room.
-  - This will stack with "Item Frequency" items to give two items after a boss if it lines up that way.
-  - This will override the "Items Enabled" setting and will allow you to get items from boss rooms.
-  - This will not override the "Maximum Items" setting.
-  - Default: Enabled
-- Jumper Boss Weight:
-  - Weighted chance for each Boss room to be Jumper.
-  - Default: 10
-- Convoy Boss Weight:
-  - Weighted chance for each Boss room to be Convoy.
-  - Default: 10
-- Snake Boss Weight: 
-  - Weighted chance for each Boss room to be Snake.
-  - Default: 10
 - Shop Chance Weight:
   - Weighted chance for each fragment to be a shop.
   - Does not count towards fragments completed for "Item Frequency".
@@ -72,6 +62,23 @@ Settings are defaulted to what is most in-line with vanilla Endless, description
   - Weighted chance for each fragment to be a rest site.
   - Does not count towards fragments completed for "Item Frequency".
   - Default: 0
+
+[Boss Settings]
+- Minimum Floors before Bosses
+  - This many fragments must be completed before bosses can be found.
+  - This overrides both Interval and Chance based Boss rooms.
+  - Default: 5
+- Jumper Boss Weight:
+  - Weighted chance for each Boss room to be Jumper.
+  - Default: 10
+- Convoy Boss Weight:
+  - Weighted chance for each Boss room to be Convoy.
+  - Default: 10
+- Snake Boss Weight: 
+  - Weighted chance for each Boss room to be Snake.
+  - Default: 10
+
+[Healing Settings]
 - Heal Each Stage:
   - Heals you this amount between each fragment.
   - Must be greater than 0 to have an effect.

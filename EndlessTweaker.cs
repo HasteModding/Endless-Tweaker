@@ -17,7 +17,9 @@ public class Program
     private static int extraReward = 0;
     private static int shopCount = 0;
     private static int restCount = 0;
+    private static int bossCount = 0;
     private static bool inAward = false;
+    //private static string targetBiome = "Forest";
 
     static Program()
     { 
@@ -27,11 +29,15 @@ public class Program
         {
             resetEndlessBossStats();
             orig(setConfig, shardID, seed);
+            Debug.Log("<<ET>> Diff Start: " + RunHandler.config.startDifficulty);
+            Debug.Log("<<ET>> Diff End: " + RunHandler.config.endDifficulty);
+            Debug.Log("<<ET>> Diff Bump: " + RunHandler.config.keepRunningDifficultyIncreasePerLevel);
+            Debug.Log("<<ET>> Speed Bump: " + RunHandler.config.keepRunningSpeedIncreasePerLevel);
         };
 
         On.RunHandler.WinRun += (orig, transitionOutOverride) =>
         {
-            if (RunHandler.isEndless)
+            if (RunHandler.config.isEndless)
             {
                 RunHandler.OnLevelCompleted();
             }
@@ -43,7 +49,7 @@ public class Program
 
         On.RunHandler.OnLevelCompleted += (orig) =>
         {
-            if (RunHandler.isEndless)
+            if (RunHandler.config.isEndless)
             {
                 //Debug.Log("<<ET>> Finished Level: " + RunHandler.RunData.currentLevel);
                 //Debug.Log("<<ET>> Biome: " + RunHandler.selectedBiome);
@@ -65,12 +71,25 @@ public class Program
             }
         };
 
+        //On.RunConfig.GetBiome += (orig, self, rand) =>
+        //{
+        //    if (self.isEndless)
+        //    {
+        //        orig(self, rand); // Per @Stevelion's suggestion, still calling the function for purposes of letting other mods hook it if they want to
+        //        return self.categories.Find(lgc => lgc.name == targetBiome).biome;
+        //    }
+        //    else
+        //    {
+        //        return orig(self, rand);
+        //    }
+        //};
+
         On.EndlessAward.Start += (orig, self) =>
         {
             inAward = true;
-            int optionCount = GameHandler.Instance.SettingsHandler.GetSetting<RewardOptionsSetting>().Value;
+            int optionCount = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().RewardOptionsSetting.Value;
 
-            int maxItems = GameHandler.Instance.SettingsHandler.GetSetting<MaxItemSetting>().Value;
+            int maxItems = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().MaxItemSetting.Value;
                 if (maxItems < 0) maxItems = int.MaxValue;
             int itemCount = RunHandler.RunData.itemData.Count();
             bool canGetMoreItems = itemCount + 1 < maxItems;
@@ -101,7 +120,7 @@ public class Program
 
         On.RunHandler.TransitionBackToLevelMap += (orig) =>
         {
-            if (RunHandler.isEndless)
+            if (RunHandler.config.isEndless)
             {
                 MusicPlayer.Instance.ChangePlaylist(RunHandler.RunData.runConfig.musicPlaylist);
                 UI_TransitionHandler.instance.Transition(RunNextScene, "Dots", 0.3f, 0.5f);
@@ -135,12 +154,14 @@ public class Program
         jumper = [false, false];
         convoy = [false, false];
         snake  = [false, false];
+        bossCount = 0;
     }
     private static void GoToBoss()
     {
-        int jumperWeight = GameHandler.Instance.SettingsHandler.GetSetting<JumperWeightSetting>().Value;
-        int convoyWeight = jumperWeight + GameHandler.Instance.SettingsHandler.GetSetting<ConvoyWeightSetting>().Value;
-        int snakeWeight = convoyWeight + GameHandler.Instance.SettingsHandler.GetSetting<SnakeWeightSetting>().Value;
+        bossCount++;
+        int jumperWeight = GameHandler.Instance.SettingsHandler.GetSetting<BossSettingsCollapsible>().JumperWeightSetting.Value;
+        int convoyWeight = jumperWeight + GameHandler.Instance.SettingsHandler.GetSetting<BossSettingsCollapsible>().ConvoyWeightSetting.Value;
+        int snakeWeight = convoyWeight + GameHandler.Instance.SettingsHandler.GetSetting<BossSettingsCollapsible>().SnakeWeightSetting.Value;
 
         string[] bossScenes = ["Challenge_ForestBoss", "Challenge_DesertBoss", "Challenge_SnakeBoss"];
 
@@ -215,27 +236,33 @@ public class Program
     {
         bool fromAward = inAward || RunHandler.RunData.currentNodeType == LevelSelectionNode.NodeType.Shop || RunHandler.RunData.currentNodeType == LevelSelectionNode.NodeType.RestStop;
             inAward = false;
-        bool itemsEnabled = GameHandler.Instance.SettingsHandler.GetSetting<ItemsEnabledSetting>().Value == OffOnMode.ON;
-        bool immediateItem = GameHandler.Instance.SettingsHandler.GetSetting<ImmediateItemSetting>().Value == OffOnMode.ON;
-        int frequency = GameHandler.Instance.SettingsHandler.GetSetting<FrequencySetting>().Value;
-        int maxItems = GameHandler.Instance.SettingsHandler.GetSetting<MaxItemSetting>().Value;
+        bool itemsEnabled = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().ItemsEnabledSetting.Value == OffOnMode.ON;
+        bool immediateItem = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().ImmediateItemSetting.Value == OffOnMode.ON;
+        int frequency = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().FrequencySetting.Value;
+        int maxItems = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().MaxItemSetting.Value;
             if (maxItems < 0) maxItems = int.MaxValue;
         int itemCount = RunHandler.RunData.itemData.Count();
         bool canGetMoreItems = itemCount < maxItems;
 
-        bool bossInterval = GameHandler.Instance.SettingsHandler.GetSetting<BossMethodSetting>().Value == OffOnMode.ON;
-        int bossNum = GameHandler.Instance.SettingsHandler.GetSetting<BossNumberSetting>().Value;
-        int bossMinFloors = GameHandler.Instance.SettingsHandler.GetSetting<BossMinFloorsSetting>().Value;
+        bool bossInterval = GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().BossMethodSetting.Value == OffOnMode.ON;
+        int bossNum = GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().BossNumberSetting.Value;
+        int bossMinFloors = GameHandler.Instance.SettingsHandler.GetSetting<BossSettingsCollapsible>().BossMinFloorsSetting.Value;
         bool bossElegible = RunHandler.RunData.currentLevel >= bossMinFloors;
             if(!bossElegible && !bossInterval) bossNum = 0;
 
-        int challengeChance = GameHandler.Instance.SettingsHandler.GetSetting<ChallengeChanceSetting>().Value;
-        bool challengeReward = GameHandler.Instance.SettingsHandler.GetSetting<ChallengeRewardSetting>().Value == OffOnMode.ON;
-        bool bossReward = GameHandler.Instance.SettingsHandler.GetSetting<BossRewardSetting>().Value == OffOnMode.ON;
+        bool diffControl = GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().DifficultyControlSetting.Value == OffOnMode.ON;
+        int diffInit = Math.Max(GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().InitialDifficultySetting.Value, 0);
+        DiffScaleEnum diffScale = GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().DifficultyScaleMethodSetting.Value;
+        int diffFreq = Math.Max(GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().DifficultyScaleFrequencySetting.Value, 0);
+        int diffRate = Math.Max(GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().DifficultyScaleRateSetting.Value, 0);
+
+        int challengeChance = GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().ChallengeChanceSetting.Value;
+        bool challengeReward = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().ChallengeRewardSetting.Value == OffOnMode.ON;
+        bool bossReward = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().BossRewardSetting.Value == OffOnMode.ON;
         if (!bossInterval) bossNum += challengeChance;
-        int shopChance = ( bossInterval ? challengeChance : bossNum ) + GameHandler.Instance.SettingsHandler.GetSetting<ShopChanceSetting>().Value; 
-        int restChance = shopChance + GameHandler.Instance.SettingsHandler.GetSetting<RestChanceSetting>().Value;
-        int maxWeight = restChance + GameHandler.Instance.SettingsHandler.GetSetting<NormalChanceSetting>().Value; // Normal is the final else, so also acts as MaxWeight
+        int shopChance = ( bossInterval ? challengeChance : bossNum ) + GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().ShopChanceSetting.Value; 
+        int restChance = shopChance + GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().RestChanceSetting.Value;
+        int maxWeight = restChance + GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().NormalChanceSetting.Value; // Normal is the final else, so also acts as MaxWeight
 
         int roll = (int)(Math.Floor(new System.Random(RunHandler.GetCurrentLevelSeed(shopCount + restCount)).NextFloat() * maxWeight));
 
@@ -252,7 +279,23 @@ public class Program
         {
             if (!giveReward) giveReward = true; // If just finished Boss frag and BossReward, override true
             else extraReward++; // If already giving reward, signal to give extra reward
-        } 
+        }
+
+        if(diffControl)
+        {
+            int diff = diffInit;
+            if(diffFreq > 0) switch(diffScale)
+                {
+                    case DiffScaleEnum.Stage: diff += diffRate * (RunHandler.RunData.currentLevel / diffFreq);
+                            break;
+                    case DiffScaleEnum.Item: diff += diffRate * (RunHandler.RunData.itemData.Count() / diffFreq);
+                            break;
+                    case DiffScaleEnum.Boss: diff += diffRate * (bossCount / diffFreq);
+                            break;
+                }
+            RunHandler.config.startDifficulty = diff;
+            RunHandler.config.endDifficulty = diff;
+        }
 
         RunHandler.RunData.currentNodeType = LevelSelectionNode.NodeType.Default;
         Debug.Log("<<ET>> MaxWeight: " + maxWeight);
@@ -296,9 +339,6 @@ public class Program
         else
         {
             Debug.Log("<<ET>> Sending to Default");
-            //RunHandler.selectedBiome = RunHandler.config.GetBiome(RunHandler.GetCurrentLevelRandomInstance());
-                RunHandler.selectedBiome = GetBiomeReflect();
-                RunHandler.configOverride = null;
             //RunHandler.LoadLevelScene();
                 LoadLevelSceneReflect();
         }
@@ -308,8 +348,8 @@ public class Program
             //Debug.Log("<<ET>> Add Health per Level Completed: " + RunHandler.config.addHealthPerLevelCompleted); // 25
             //Debug.Log("<<ET>> Add Life Every N Levels: " + RunHandler.config.addLifeEveryNLevels); // 3
 
-            int stageHealAmount = GameHandler.Instance.SettingsHandler.GetSetting<StageHealSetting>().Value;
-            int stageLifeFrequency = GameHandler.Instance.SettingsHandler.GetSetting<StageLifeSetting>().Value;
+            int stageHealAmount = GameHandler.Instance.SettingsHandler.GetSetting<HealingCollapsible>().StageHealSetting.Value;
+            int stageLifeFrequency = GameHandler.Instance.SettingsHandler.GetSetting<HealingCollapsible>().StageLifeSetting.Value;
 
             if (stageHealAmount > 0)
             {
@@ -423,6 +463,11 @@ public class FragmentCollapsible : CollapsibleSetting, IExposedSetting
     public BossNumberSetting BossNumberSetting = new BossNumberSetting();
     public ShopChanceSetting ShopChanceSetting = new ShopChanceSetting();
     public RestChanceSetting RestChanceSetting = new RestChanceSetting();
+    public DifficultyControlSetting DifficultyControlSetting = new DifficultyControlSetting();
+    public InitialDifficultySetting InitialDifficultySetting = new InitialDifficultySetting();
+    public DifficultyScaleMethodSetting DifficultyScaleMethodSetting = new DifficultyScaleMethodSetting();
+    public DifficultyScaleFrequencySetting DifficultyScaleFrequencySetting = new DifficultyScaleFrequencySetting();
+    public DifficultyScaleRateSetting DifficultyScaleRateSetting = new DifficultyScaleRateSetting();
 }
     public class NormalChanceSetting : IntSetting, IExposedSetting
     {
@@ -439,18 +484,18 @@ public class FragmentCollapsible : CollapsibleSetting, IExposedSetting
         protected override int GetDefaultValue() => 0;
     }
     public class BossMethodSetting : OffOnSetting, IExposedSetting
-{
-    public string GetCategory() => "EndlessTweaker";
-    public LocalizedString GetDisplayName() => new UnlocalizedString("Should Boss stages be chance or interval?");
-    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
-    protected override OffOnMode GetDefaultValue() => OffOnMode.OFF;
-    public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
     {
-        new UnlocalizedString("Chance"),
-        new UnlocalizedString("Interval")
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Should Boss stages be chance or interval?");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override OffOnMode GetDefaultValue() => OffOnMode.OFF;
+        public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+        {
+            new UnlocalizedString("Chance"),
+            new UnlocalizedString("Interval")
 
-    };
-}
+        };
+    }
     public class BossNumberSetting : IntSetting, IExposedSetting
     {
         public string GetCategory() => "EndlessTweaker";
@@ -471,6 +516,59 @@ public class FragmentCollapsible : CollapsibleSetting, IExposedSetting
         public LocalizedString GetDisplayName() => new UnlocalizedString("Rest Chance Weight");
         public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
         protected override int GetDefaultValue() => 0;
+    }
+    public class DifficultyControlSetting : OffOnSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Modify Difficulty Numbers?");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override OffOnMode GetDefaultValue() => OffOnMode.OFF;
+        public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+        {
+            new UnlocalizedString("No"),
+            new UnlocalizedString("Yes")
+
+        };
+    }
+public class InitialDifficultySetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Initial Difficulty Setting");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 10;
+    }
+    public enum DiffScaleEnum
+    {
+        Stage = 0,
+        Item = 1,
+        Boss = 2
+    }
+    public class DifficultyScaleMethodSetting : EnumSetting<DiffScaleEnum>, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Difficulty Scaling Method");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override DiffScaleEnum GetDefaultValue() => DiffScaleEnum.Stage;
+        public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>()
+        {
+            new UnlocalizedString("Stage"),
+            new UnlocalizedString("Item"),
+            new UnlocalizedString("Boss")
+        };
+    }
+    public class DifficultyScaleFrequencySetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Difficulty Increase Frequency");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 5;
+    }
+    public class DifficultyScaleRateSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Difficulty Increase Amount");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 1;
     }
 [HasteSetting] 
 public class BossSettingsCollapsible : CollapsibleSetting, IExposedSetting
@@ -515,7 +613,7 @@ public class HealingCollapsible : CollapsibleSetting, IExposedSetting
 {
     public string GetCategory() => "EndlessTweaker";
     public LocalizedString GetDisplayName() => new UnlocalizedString("Healing Settings");
-    public StageHealSetting StageHeal = new StageHealSetting();
+    public StageHealSetting StageHealSetting = new StageHealSetting();
     public StageLifeSetting StageLifeSetting = new StageLifeSetting();
 }
     public class StageHealSetting : IntSetting, IExposedSetting

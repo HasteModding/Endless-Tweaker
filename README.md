@@ -62,6 +62,27 @@ Settings are defaulted to what is most in-line with vanilla Endless, description
   - Weighted chance for each fragment to be a rest site.
   - Does not count towards fragments completed for "Item Frequency".
   - Default: 0
+- Modify Difficulty Numbers?:
+  - Toggles whether Endless Tweaker should control stage difficulty for endless mode.
+  - Default: No
+- Initial Difficulty Setting:
+  - Toggles the base difficulty of endless stages.
+  - Vanilla has Peaceful at 5, Easy at 5, Medium at 10, Hard at 15, and Very Hard at 20.
+    - Everything other than Peaceful also scales up, up to 30 for Very Hard.
+  - Default: 10
+- Difficulty Scaling Method:
+  - Sets the deciding factor for how often difficulty increases.
+  - Stage will increase the difficulty after X fragments are completed. Rest and Shop stages do not count.
+  - Item will increase the difficulty after X items are manifested. 
+  - Boss will increase the difficulty after X bosses are defeated.
+  - Default: Stage
+- Difficulty Increase Frequency:
+  - How many is X - this controls how many of the Scaling method must be met before difficulty increases.
+  - Default: 5
+- Difficulty Increase Amount:
+  - How much Difficulty increases each time it does so.
+  - Large Difficult numbers will cause long level load time.
+  - Default: 1
 
 [Boss Settings]
 - Minimum Floors before Bosses

@@ -27,17 +27,22 @@ public class Program
 
         On.RunHandler.StartNewRun += (orig, setConfig, shardID, seed) =>
         {
-            resetEndlessBossStats();
-            orig(setConfig, shardID, seed);
-            Debug.Log("<<ET>> Diff Start: " + RunHandler.config.startDifficulty);
-            Debug.Log("<<ET>> Diff End: " + RunHandler.config.endDifficulty);
-            Debug.Log("<<ET>> Diff Bump: " + RunHandler.config.keepRunningDifficultyIncreasePerLevel);
-            Debug.Log("<<ET>> Speed Bump: " + RunHandler.config.keepRunningSpeedIncreasePerLevel);
+            if (!new OptionsCollector().modEnabled) orig(setConfig, shardID, seed);
+            else
+            {
+                resetEndlessBossStats();
+                orig(setConfig, shardID, seed);
+                Debug.Log("<<ET>> Diff Start: " + RunHandler.config.startDifficulty);
+                Debug.Log("<<ET>> Diff End: " + RunHandler.config.endDifficulty);
+                Debug.Log("<<ET>> Diff Bump: " + RunHandler.config.keepRunningDifficultyIncreasePerLevel);
+                Debug.Log("<<ET>> Speed Bump: " + RunHandler.config.keepRunningSpeedIncreasePerLevel);
+            }
         };
 
         On.RunHandler.WinRun += (orig, transitionOutOverride) =>
         {
-            if (RunHandler.config.isEndless)
+            if (!new OptionsCollector().modEnabled) orig(transitionOutOverride);
+            else if (RunHandler.config.isEndless)
             {
                 RunHandler.OnLevelCompleted();
             }
@@ -49,7 +54,8 @@ public class Program
 
         On.RunHandler.OnLevelCompleted += (orig) =>
         {
-            if (RunHandler.config.isEndless)
+            if (!new OptionsCollector().modEnabled) orig();
+            else if (RunHandler.config.isEndless)
             {
                 //Debug.Log("<<ET>> Finished Level: " + RunHandler.RunData.currentLevel);
                 //Debug.Log("<<ET>> Biome: " + RunHandler.selectedBiome);
@@ -86,38 +92,43 @@ public class Program
 
         On.EndlessAward.Start += (orig, self) =>
         {
-            inAward = true;
-            OptionsCollector options = new();
-            int itemCount = RunHandler.RunData.itemData.Count();
-            bool canGetMoreItems = itemCount + 1 < options.maxItems;
+            if (!new OptionsCollector().modEnabled) orig(self);
+            else
+            { 
+                inAward = true;
+                OptionsCollector options = new();
+                int itemCount = RunHandler.RunData.itemData.Count();
+                bool canGetMoreItems = itemCount + 1 < options.maxItems;
 
-            System.Random currentLevelRandomInstance = new System.Random(RunHandler.GetCurrentLevelSeed(extraReward));
-            for (int i = 0; i < options.rewardOptions; i++)
-            {
-                UnlockScreen.me.AddItem(ItemDatabase.GetRandomItem(currentLevelRandomInstance, MinorItemInteraction.MajorOnly, UnlockScreen.me.itemsToAdd));
-            }
-
-            UnlockScreen.me.chooseItem = true;
-            //UnlockScreen.me.FinishAddingPhase(RunHandler.PlayNextLevel);
-                UnlockScreen.me.FinishAddingPhase(() =>
+                System.Random currentLevelRandomInstance = new System.Random(RunHandler.GetCurrentLevelSeed(extraReward));
+                for (int i = 0; i < options.rewardOptions; i++)
                 {
-                    if (canGetMoreItems && extraReward > 0)
+                    UnlockScreen.me.AddItem(ItemDatabase.GetRandomItem(currentLevelRandomInstance, MinorItemInteraction.MajorOnly, UnlockScreen.me.itemsToAdd));
+                }
+
+                UnlockScreen.me.chooseItem = true;
+                //UnlockScreen.me.FinishAddingPhase(RunHandler.PlayNextLevel);
+                    UnlockScreen.me.FinishAddingPhase(() =>
                     {
-                        Debug.Log("<<ET>> ExtraReward: " +  extraReward);
-                        extraReward--;
-                        SceneManager.LoadScene("EndlessAwardScene");
-                    }
-                    else
-                    {
-                        UI_TransitionHandler.instance.Transition(RunNextScene, "Dots", 0.3f, 0.5f);
-                        //RunNextScene();
-                    }
-                });
+                        if (canGetMoreItems && extraReward > 0)
+                        {
+                            Debug.Log("<<ET>> ExtraReward: " +  extraReward);
+                            extraReward--;
+                            SceneManager.LoadScene("EndlessAwardScene");
+                        }
+                        else
+                        {
+                            UI_TransitionHandler.instance.Transition(RunNextScene, "Dots", 0.3f, 0.5f);
+                            //RunNextScene();
+                        }
+                    });
+            }
         };
 
         On.RunHandler.TransitionBackToLevelMap += (orig) =>
         {
-            if (RunHandler.config.isEndless)
+            if (!new OptionsCollector().modEnabled) orig();
+            else if (RunHandler.config.isEndless)
             {
                 MusicPlayer.Instance.ChangePlaylist(RunHandler.RunData.runConfig.musicPlaylist);
                 UI_TransitionHandler.instance.Transition(RunNextScene, "Dots", 0.3f, 0.5f);
@@ -402,6 +413,8 @@ internal class WeightedFunc<T>
 }
 internal class OptionsCollector
 {
+    public bool modEnabled = GameHandler.Instance.SettingsHandler.GetSetting<ModToggleSetting>().Value == OffOnMode.ON;
+
     // Item Settings Collapsible
     public bool itemsEnabled = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().ItemsEnabledSetting.Value == OffOnMode.ON;
     public bool immediateItem = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().ImmediateItemSetting.Value == OffOnMode.ON;
@@ -443,6 +456,20 @@ internal class OptionsCollector
 
 // The HasteSetting attribute is equivalent to
 // GameHandler.Instance.SettingsHandler.AddSetting(new HelloSetting());
+[HasteSetting]
+public class ModToggleSetting : OffOnSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Enable Mod?");
+    public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+    protected override OffOnMode GetDefaultValue() => OffOnMode.ON;
+    public override List<LocalizedString> GetLocalizedChoices() => new List<LocalizedString>
+    {
+        new UnlocalizedString("Disabled"),
+        new UnlocalizedString("Enabled")
+
+    };
+}
 [HasteSetting]
 public class ItemSettingsCollapsible : CollapsibleSetting, IExposedSetting
 {
@@ -707,3 +734,47 @@ public class HealingCollapsible : CollapsibleSetting, IExposedSetting
         public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
         protected override int GetDefaultValue() => 3;
     }
+
+/**
+[HasteSetting]
+public class ResetSetting : ButtonSetting, IExposedSetting
+{
+    public string GetCategory() => "EndlessTweaker";
+    public LocalizedString GetDisplayName() => new UnlocalizedString("Reset Settings.\nValues do not visually update until settings is closed and reopened.");
+    public override String GetButtonText() => "Reset";
+    public override void OnClicked(ISettingHandler settingHandler)
+    {
+        // Item Settings Collapsible
+        GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().ItemsEnabledSetting.SetValue(OffOnMode.ON, settingHandler, false);
+        GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().ImmediateItemSetting.SetValue(OffOnMode.ON, settingHandler, false);
+        GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().FrequencySetting.SetValue(5, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().MaxItemSetting.SetValue(-1, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().RewardOptionsSetting.SetValue(3, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().ChallengeRewardSetting.SetValue(OffOnMode.ON, settingHandler, false);
+        GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().BossRewardSetting.SetValue(OffOnMode.ON, settingHandler, false);
+
+        // Fragment Collapsible
+        GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().NormalChanceSetting.SetValue(100, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().ChallengeChanceSetting.SetValue(0, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().BossMethodSetting.SetValue(OffOnMode.ON, settingHandler, false);
+        GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().BossNumberSetting.SetValue(0, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().ShopChanceSetting.SetValue(0, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().RestChanceSetting.SetValue(0, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().DifficultyControlSetting.SetValue(OffOnMode.OFF, settingHandler, false);
+        GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().InitialDifficultySetting.SetValue(10, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().DifficultyScaleMethodSetting.SetValue(DiffScaleEnum.Stage, settingHandler, false);
+        GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().DifficultyScaleFrequencySetting.SetValue(5, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<FragmentCollapsible>().DifficultyScaleRateSetting.SetValue(1, settingHandler);
+
+        // Boss Settings Collapsible
+        GameHandler.Instance.SettingsHandler.GetSetting<BossSettingsCollapsible>().BossMinFloorsSetting.SetValue(5, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<BossSettingsCollapsible>().JumperWeightSetting.SetValue(10, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<BossSettingsCollapsible>().ConvoyWeightSetting.SetValue(10, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<BossSettingsCollapsible>().SnakeWeightSetting.SetValue(10, settingHandler);
+
+        // Healing Collapsible
+        GameHandler.Instance.SettingsHandler.GetSetting<HealingCollapsible>().StageHealSetting.SetValue(25, settingHandler);
+        GameHandler.Instance.SettingsHandler.GetSetting<HealingCollapsible>().StageLifeSetting.SetValue(3, settingHandler);
+    }
+}
+*/

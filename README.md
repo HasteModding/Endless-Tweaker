@@ -6,6 +6,10 @@ If Bosses are enabled, you must defeat each tier of a boss before you can encoun
 
 Settings are defaulted to what is most in-line with vanilla Endless, descriptions are listed below:
 
+- Mod Enabled?
+  - Toggles the mod, allows for enjoying some default gameplay or other modded endless experiences without uninstalling the mod.
+  - Default: Enabled
+
 [Item Settings]
 - Allow Items in Endless:
   - Controls whether or not you'll get items at all from the initial fragment and from the recurring frequency after.

@@ -24,9 +24,6 @@
          that DLL will not get referenced in your compiled mod, so it's fine to just reference everything.
          Private="False" means that the referenced DLLs will not get copied to the output directory. -->
         <Reference Include="$(HasteDlls)" Private="false" />
-        <Reference Include="0Harmony">
-          <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\1796470\3408901301\0Harmony.dll</HintPath>
-        </Reference>
         <Reference Include="SettingsLib">
           <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\1796470\3462196533\SettingsLib.dll</HintPath>
         </Reference>

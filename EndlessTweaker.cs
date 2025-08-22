@@ -8,6 +8,7 @@ using UnityEngine.SceneManagement;
 using Zorro.Settings;
 using SettingsLib.Settings;
 using Steamworks;
+using Mono.WebBrowser;
 
 namespace EndlessTweaker;
 
@@ -32,14 +33,14 @@ public class EndlessTweakerMain
         //Debug.Log("[Endless Tweaker] Speed Demon Detected: " + SD);
         //testReflect();
 
-        On.RunHandler.StartNewRun += (orig, setConfig, shardID, seed) =>
+        On.RunHandler.StartNewRun += (orig, setConfig, shardID, seed, setRunConfigRuntimeData) =>
         {
-            if (!new OptionsCollector().modEnabled) orig(setConfig, shardID, seed);
+            if (!new OptionsCollector().modEnabled) orig(setConfig, shardID, seed, setRunConfigRuntimeData);
             else
             {
                 Debug.Log("<<ET>> Captured RunHandler.StartNewRun");
                 resetEndlessBossStats();
-                orig(setConfig, shardID, seed);
+                orig(setConfig, shardID, seed, setRunConfigRuntimeData);
                 if(new OptionsCollector().diffControl)
                 {
                     Debug.Log("<<ET>> Diff Start: " + RunHandler.config.startDifficulty);
@@ -106,6 +107,14 @@ public class EndlessTweakerMain
         //    }
         //};
 
+        On.UnlockScreen.GetRerollCost += (orig, self) =>
+        {
+            OptionsCollector options = new();
+            int rerollCount = (int) typeof(UnlockScreen).GetField("rerollCount", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(self);
+
+            return options.rerollBaseCost + (options.rerollIncCost * rerollCount);
+        };
+
         On.EndlessAward.Start += (orig, self) =>
         {
             if (!new OptionsCollector().modEnabled) orig(self);
@@ -118,10 +127,10 @@ public class EndlessTweakerMain
                 int itemCount = RunHandler.RunData.itemData.Count();
                 bool canGetMoreItems = itemCount + 1 < options.maxItems;
 
-                System.Random currentLevelRandomInstance = new System.Random(RunHandler.GetCurrentLevelSeed(itemCount));
+                System.Random currentLevelRandomInstance = RunHandler.GetCurrentLevelRandomInstance(itemCount);
                 for (int i = 0; i < options.rewardOptions; i++)
                 {
-                    UnlockScreen.me.AddItem(ItemDatabase.GetRandomItem(localPlayer, currentLevelRandomInstance, MinorItemInteraction.MajorOnly, UnlockScreen.me.itemsToAdd));
+                    UnlockScreen.me.AddItem(ItemDatabase.GetRandomItem(localPlayer, currentLevelRandomInstance, GetRandomItemFlags.Major, TagInteraction.None, null, UnlockScreen.me.itemsToAdd));
                 }
 
                 UnlockScreen.me.chooseItem = true;
@@ -140,6 +149,49 @@ public class EndlessTweakerMain
                             RunNextScene();
                         }
                     });
+            }
+        };
+        On.UnlockScreen.RerollItems += (orig, self) =>
+        {
+            if (!new OptionsCollector().modEnabled || !RunHandler.config.isEndless) orig(self);
+            else
+            {
+                Debug.Log("<<ET>> Captured UnlockScreen.RerollItems");
+                // Trying to replicate the effects of RerollItems requires so many Reflections as to be obscene.
+                // We are instead letting it do its thing and then overwriting the items afterward.
+                orig(self);
+                self.DeActivateItemButtons();
+                self.ResetState();
+
+                Player localPlayer = Player.localPlayer;
+                inAward = true;
+                OptionsCollector options = new();
+                int itemCount = RunHandler.RunData.itemData.Count();
+                bool canGetMoreItems = itemCount + 1 < options.maxItems;
+
+                System.Random currentLevelRandomInstance = RunHandler.GetCurrentLevelRandomInstance(itemCount);
+                for (int i = 0; i < options.rewardOptions; i++)
+                {
+                    self.AddItem(ItemDatabase.GetRandomItem(localPlayer, currentLevelRandomInstance, GetRandomItemFlags.Major, TagInteraction.None, null, self.itemsToAdd));
+                }
+
+                self.chooseItem = true;
+                //self.FinishAddingPhase(RunHandler.PlayNextLevel);
+                self.FinishAddingPhase(localPlayer, () =>
+                {
+                    if (canGetMoreItems && extraReward > 0)
+                    {
+                        Debug.Log("<<ET>> ExtraReward: " + extraReward);
+                        extraReward--;
+                        SceneManager.LoadScene("EndlessAwardScene");
+                    }
+                    else
+                    {
+                        //UI_TransitionHandler.instance.Transition(RunNextScene, "Dots", 0.3f, 0.5f);
+                        RunNextScene();
+                    }
+                });
+                self.ActivateItemButtons();
             }
         };
 
@@ -183,6 +235,7 @@ public class EndlessTweakerMain
         MethodInfo getBiomeMethod = typeof(RunConfig).GetMethod("GetBiome", BindingFlags.Instance | BindingFlags.NonPublic);
         return (GameObject)getBiomeMethod.Invoke(RunHandler.config, [ RunHandler.GetCurrentLevelRandomInstance() ]);
     }
+
     private static bool[] jumper = [false, false];
     private static bool[] convoy = [false, false];
     private static bool[] snake  = [false, false];
@@ -373,7 +426,7 @@ public class EndlessTweakerMain
             if (!options.bossInterval && options.bossNum > 0) wa.Add(options.bossNum, () => GoToBoss(false));
             if (options.shopWeight > 0) wa.Add(options.shopWeight, GoToShop);
             if (options.restWeight > 0) wa.Add(options.restWeight, GoToRest);
-            wa.Run(new System.Random(RunHandler.GetCurrentLevelSeed(shopCount + restCount)));
+            wa.Run(RunHandler.GetCurrentLevelRandomInstance(shopCount + restCount));
         }
 
         if (RunHandler.InRun && !fromAward) 
@@ -467,6 +520,8 @@ internal class OptionsCollector
     public int itemFrequency = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().FrequencySetting.Value;
     public int maxItems = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().MaxItemSetting.Value;
     public int rewardOptions = Math.Max(GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().RewardOptionsSetting.Value, 1);
+    public int rerollBaseCost = Math.Max(GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().RerollBaseCostSetting.Value, 0);
+    public int rerollIncCost = Math.Max(GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().RerollIncreaseCostSetting.Value, 0);
     public bool challengeReward = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().ChallengeRewardSetting.Value == OffOnMode.ON;
     public bool bossReward = GameHandler.Instance.SettingsHandler.GetSetting<ItemSettingsCollapsible>().BossRewardSetting.Value == OffOnMode.ON;
 
@@ -526,6 +581,8 @@ public class ItemSettingsCollapsible : CollapsibleSetting, IExposedSetting
     public FrequencySetting FrequencySetting = new FrequencySetting();
     public MaxItemSetting MaxItemSetting = new MaxItemSetting();
     public RewardOptionsSetting RewardOptionsSetting = new RewardOptionsSetting();
+    public RerollBaseCostSetting RerollBaseCostSetting = new RerollBaseCostSetting();
+    public RerollIncreaseCostSetting RerollIncreaseCostSetting = new RerollIncreaseCostSetting();
     public ChallengeRewardSetting ChallengeRewardSetting = new ChallengeRewardSetting();
     public BossRewardSetting BossRewardSetting = new BossRewardSetting();
 }
@@ -575,6 +632,20 @@ public class ItemSettingsCollapsible : CollapsibleSetting, IExposedSetting
         public LocalizedString GetDisplayName() => new UnlocalizedString("Reward Items to Choose From");
         public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
         protected override int GetDefaultValue() => 3;
+    }
+    public class RerollBaseCostSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Base Reroll Cost");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 1000;
+    }
+    public class RerollIncreaseCostSetting : IntSetting, IExposedSetting
+    {
+        public string GetCategory() => "EndlessTweaker";
+        public LocalizedString GetDisplayName() => new UnlocalizedString("Reroll Additional Cost per Reroll");
+        public override void ApplyValue() => Debug.Log($"Mod apply value {Value}");
+        protected override int GetDefaultValue() => 500;
     }
     public class ChallengeRewardSetting : OffOnSetting, IExposedSetting
     {

@@ -30,6 +30,13 @@ Settings are defaulted to what is most in-line with vanilla Endless, description
   - If set over 9, you may not be able to see all of them.
   - Behavior is untested and unsupported for values less than 1.
   - Default: 3
+- Reroll Base Cost:
+  - The base cost of rerolling items on the reward screen.
+  - Default: 1000
+- Reroll Additional Cost per Reroll:
+  - The amount the cost of rerolling increases per prior reroll.
+  - Reroll cost formula is [Base] + ([Additional] * [# of Rerolls])
+  - Default: 500
 - Give Item on Challenge Complete:
   - Similar to running a shard normally, if enabled this will give an extra item reward after completing a challenge fragment.
   - This will stack with "Item Frequency" items to give two items after a fragment if it lines up that way.

@@ -7,31 +7,17 @@ using UnityEngine.Localization;
 using UnityEngine.SceneManagement;
 using Zorro.Settings;
 using SettingsLib.Settings;
-using Steamworks;
-using Mono.WebBrowser;
 
 namespace EndlessTweaker;
 
 [LandfallPlugin]
 public class EndlessTweakerMain
 {
-    
-    private static int extraReward = 0;
-    private static int shopCount = 0;
-    private static int restCount = 0;
-    private static int bossCount = 0;
-    private static bool inAward = false;
-    //private static string targetBiome = "Forest";
-
     static EndlessTweakerMain()
     { 
         Debug.Log("[Endless Tweaker] Initializing!");
         Debug.Log(typeof(EndlessTweakerMain).AssemblyQualifiedName);
 
-        //ulong SpeedDemonID = 3459964374;
-        //bool SD = Modloader.LoadedItems.Where(li => li.m_PublishedFileId == SpeedDemonID).Count() > 0;
-        //Debug.Log("[Endless Tweaker] Speed Demon Detected: " + SD);
-        //testReflect();
 
         On.RunHandler.StartNewRun += (orig, setConfig, shardID, seed, setRunConfigRuntimeData) =>
         {
@@ -39,15 +25,8 @@ public class EndlessTweakerMain
             else
             {
                 Debug.Log("<<ET>> Captured RunHandler.StartNewRun");
-                resetEndlessBossStats();
+                EndlessSequencer.ResetEndlessBossStats();
                 orig(setConfig, shardID, seed, setRunConfigRuntimeData);
-                if(new OptionsCollector().diffControl)
-                {
-                    Debug.Log("<<ET>> Diff Start: " + RunHandler.config.startDifficulty);
-                    Debug.Log("<<ET>> Diff End: " + RunHandler.config.endDifficulty);
-                    Debug.Log("<<ET>> Diff Bump: " + RunHandler.config.keepRunningDifficultyIncreasePerLevel);
-                    Debug.Log("<<ET>> Speed Bump: " + RunHandler.config.keepRunningSpeedIncreasePerLevel);
-                }
             }
         };
 
@@ -57,6 +36,7 @@ public class EndlessTweakerMain
             else if (RunHandler.config.isEndless)
             {
                 Debug.Log("<<ET>> Captured RunHandler.CompleteRun");
+                Debug.Log("<<ET>> Reroute to RunHandler.TransitionOnLevelCompleted for Rehook");
                 RunHandler.TransitionOnLevelCompleted();
             }
             else
@@ -67,45 +47,24 @@ public class EndlessTweakerMain
 
         On.RunHandler.TransitionOnLevelCompleted += (orig) =>
         {
-            if (!new OptionsCollector().modEnabled) orig();
-            else if (RunHandler.config.isEndless)
-            {
-                Debug.Log("<<ET>> Captured RunHandler.TransitionOnLevelCompleted");
-                //Debug.Log("<<ET>> Finished Level: " + RunHandler.RunData.currentLevel);
-                //Debug.Log("<<ET>> Biome: " + RunHandler.selectedBiome);
-                //Debug.Log("<<ET>> Config: " + RunHandler.configOverride);
-                //Debug.Log("<<ET>> NodeType: " + RunHandler.RunData.currentNode.type);
-
-                //RunHandler.RunData.currentLevelID++;
-                //RunHandler.RunData.currentLevel++;
-
-                RunHandler.RunData.currentNodeStatus = NGOPlayer.PlayerNodeStatus.PostLevelScreen;
-
-                Player.localPlayer.data.resource += Player.localPlayer.data.temporaryResource;
-
-                RunNextScene();
-
-                HasteStats.SetStat(HasteStatType.STAT_ENDLESS_HIGHSCORE, RunHandler.RunData.currentLevel, onlyInc: true);
-                HasteStats.OnLevelComplete();
-            }
+            if (!new OptionsCollector().modEnabled || !RunHandler.config.isEndless) orig();
             else
             {
-                orig();
+                Debug.Log("<<ET>> Captured RunHandler.TransitionOnLevelCompleted");
+                Debug.Log("<<ET>> Reroute to EndlessSequencer.HandleEndOfLevel");
+                EndlessSequencer.HandleEndOfLevel();
             }
         };
-
-        //On.RunConfig.GetBiome += (orig, self, rand) =>
-        //{
-        //    if (self.isEndless)
-        //    {
-        //        orig(self, rand); // Per @Stevelion's suggestion, still calling the function for purposes of letting other mods hook it if they want to
-        //        return self.categories.Find(lgc => lgc.name == targetBiome).biome;
-        //    }
-        //    else
-        //    {
-        //        return orig(self, rand);
-        //    }
-        //};
+        On.RunHandler.TransitionBackToLevelMap += (orig) =>
+        {
+            if (!new OptionsCollector().modEnabled || !RunHandler.config.isEndless) orig();
+            else
+            {
+                Debug.Log("<<ET>> Captured RunHandler.TransitionBackToLevelMap");
+                Debug.Log("<<ET>> Reroute to EndlessSequencer.HandleBackToLevelMap");
+                EndlessSequencer.HandleBackToLevelMap();
+            }
+        };
 
         On.UnlockScreen.GetRerollCost += (orig, self) =>
         {
@@ -122,33 +81,33 @@ public class EndlessTweakerMain
             {
                 Debug.Log("<<ET>> Captured EndlessAward.Start");
                 Player localPlayer = Player.localPlayer;
-                inAward = true;
+                EndlessSequencer.inAward = true;
                 OptionsCollector options = new();
                 int itemCount = RunHandler.RunData.itemData.Count();
                 bool canGetMoreItems = itemCount + 1 < options.maxItems;
 
-                System.Random currentLevelRandomInstance = RunHandler.GetCurrentLevelRandomInstance(itemCount);
+                System.Random currentLevelRandomInstance = EndlessSequencer.getRandom();
                 for (int i = 0; i < options.rewardOptions; i++)
                 {
                     UnlockScreen.me.AddItem(ItemDatabase.GetRandomItem(localPlayer, currentLevelRandomInstance, GetRandomItemFlags.Major, TagInteraction.None, null, UnlockScreen.me.itemsToAdd));
                 }
 
                 UnlockScreen.me.chooseItem = true;
-                //UnlockScreen.me.FinishAddingPhase(RunHandler.PlayNextLevel);
-                    UnlockScreen.me.FinishAddingPhase(localPlayer, () =>
+                UnlockScreen.me.FinishAddingPhase(localPlayer, () =>
+                {
+                    EndlessSequencer.rewardCount--;
+                    Debug.Log("<<ET>> EndlessAward Selected");
+                    if (canGetMoreItems && EndlessSequencer.rewardCount > 0)
                     {
-                        if (canGetMoreItems && extraReward > 0)
-                        {
-                            Debug.Log("<<ET>> ExtraReward: " +  extraReward);
-                            extraReward--;
-                            SceneManager.LoadScene("EndlessAwardScene");
-                        }
-                        else
-                        {
-                            //UI_TransitionHandler.instance.Transition(RunNextScene, "Dots", 0.3f, 0.5f);
-                            RunNextScene();
-                        }
-                    });
+                        Debug.Log("<<ET>> RewardCount Remaining: " + EndlessSequencer.rewardCount);
+                        SceneManager.LoadScene("EndlessAwardScene");
+                    }
+                    else
+                    {
+                        Debug.Log("<<ET>> ExtraReward Finished: Passing back to RunHandler.TransitionBackToLevelMap for re-hooking");
+                        RunHandler.TransitionBackToLevelMap();
+                    }
+                });
             }
         };
         On.UnlockScreen.RerollItems += (orig, self) =>
@@ -164,352 +123,39 @@ public class EndlessTweakerMain
                 self.ResetState();
 
                 Player localPlayer = Player.localPlayer;
-                inAward = true;
+                EndlessSequencer.inAward = true;
                 OptionsCollector options = new();
                 int itemCount = RunHandler.RunData.itemData.Count();
                 bool canGetMoreItems = itemCount + 1 < options.maxItems;
 
-                System.Random currentLevelRandomInstance = RunHandler.GetCurrentLevelRandomInstance(itemCount);
+                System.Random currentLevelRandomInstance = EndlessSequencer.getRandom();
                 for (int i = 0; i < options.rewardOptions; i++)
                 {
                     self.AddItem(ItemDatabase.GetRandomItem(localPlayer, currentLevelRandomInstance, GetRandomItemFlags.Major, TagInteraction.None, null, self.itemsToAdd));
                 }
 
                 self.chooseItem = true;
-                //self.FinishAddingPhase(RunHandler.PlayNextLevel);
                 self.FinishAddingPhase(localPlayer, () =>
                 {
-                    if (canGetMoreItems && extraReward > 0)
+                    EndlessSequencer.rewardCount--;
+                    Debug.Log("<<ET>> EndlessAward Selected");
+                    if (canGetMoreItems && EndlessSequencer.rewardCount > 0)
                     {
-                        Debug.Log("<<ET>> ExtraReward: " + extraReward);
-                        extraReward--;
+                        Debug.Log("<<ET>> RewardCount Remaining: " + EndlessSequencer.rewardCount);
                         SceneManager.LoadScene("EndlessAwardScene");
                     }
                     else
                     {
-                        //UI_TransitionHandler.instance.Transition(RunNextScene, "Dots", 0.3f, 0.5f);
-                        RunNextScene();
+                        Debug.Log("<<ET>> ExtraReward Finished: Passing back to RunHandler.TransitionBackToLevelMap for re-hooking");
+                        RunHandler.TransitionBackToLevelMap();
                     }
                 });
                 self.ActivateItemButtons();
             }
         };
-
-        On.RunHandler.TransitionBackToLevelMap += (orig) =>
-        {
-            if (!new OptionsCollector().modEnabled) orig();
-            else if (RunHandler.config.isEndless)
-            {
-                Debug.Log("<<ET>> Captured RunHandler.TransitionBackToLevelMap");
-                MusicPlayer.Instance.ChangePlaylist(RunHandler.RunData.runConfig.musicPlaylist);
-                UI_TransitionHandler.instance.Transition(RunNextScene, "Dots", 0.3f, 0.5f);
-                //RunNextScene(true);
-            }
-            else orig();
-        };
-    }
-
-    //private static void testReflect()
-    //{
-    //    var c = Type.GetType("SpeedDemon.ItemReward+RefreshCost, SpeedDemon");
-    //    Debug.Log(c);
-    //    var m = c.GetMethod("GetRefreshCost");
-    //    Debug.Log(m);
-    //    var i = Activator.CreateInstance(c);
-    //    Debug.Log(i);
-    //    Debug.Log(m.Invoke(i, []));
-    //}
-    private static void AddHealthReflect(Player localPlayer, float amount)
-    {
-        MethodInfo getAddHealthMethod = typeof(Player).GetMethod("AddHealth", BindingFlags.Instance | BindingFlags.NonPublic);
-        getAddHealthMethod.Invoke(localPlayer, [ amount ]);
-    }
-    private static void LoadLevelSceneReflect()
-    {
-        MethodInfo LoadLevelSceneMethod = typeof(RunHandler).GetMethod("LoadLevelScene", BindingFlags.Static | BindingFlags.NonPublic);
-        LoadLevelSceneMethod.Invoke(null, []);
-    }
-    private static GameObject GetBiomeReflect()
-    {
-        // Thank you to @stevelion in the Haste Discord for helping me figure this part out!
-        MethodInfo getBiomeMethod = typeof(RunConfig).GetMethod("GetBiome", BindingFlags.Instance | BindingFlags.NonPublic);
-        return (GameObject)getBiomeMethod.Invoke(RunHandler.config, [ RunHandler.GetCurrentLevelRandomInstance() ]);
-    }
-
-    private static bool[] jumper = [false, false];
-    private static bool[] convoy = [false, false];
-    private static bool[] snake  = [false, false];
-    private static void resetEndlessBossStats()
-    {
-        jumper = [false, false];
-        convoy = [false, false];
-        snake  = [false, false];
-        bossCount = 0;
-    }
-
-    private static LevelSelectionNode.Data getNextNode(LevelSelectionNode.NodeType type)
-    {
-        int level = RunHandler.RunData.currentLevel;
-        return new LevelSelectionNode.Data(level, type, level + 1, 0);
-    }
-    private static void GoToNormal()
-    {
-        Debug.Log("<<ET>> Sending to Normal Fragment");
-        LevelSelectionHandler.PlayNode(getNextNode(LevelSelectionNode.NodeType.Default));
-        //RunHandler.RunData.currentNode.type = LevelSelectionNode.NodeType.Default;
-        ////RunHandler.LoadLevelScene();
-        //    LoadLevelSceneReflect();
-    }
-    private static void GoToChallenge()
-    {
-        Debug.Log("<<ET>> Sending to Challenge Fragment");
-        LevelSelectionHandler.PlayNode(getNextNode(LevelSelectionNode.NodeType.Challenge));
-        //RunHandler.RunData.currentNode.type = LevelSelectionNode.NodeType.Challenge;
-        ////RunHandler.PlayChallenge();
-        //    RunHandler.configOverride = (LevelGenConfig)Resources.Load("Ethereal");
-        //    LoadLevelSceneReflect();
-    }
-    private static void GoToShop()
-    {
-        Debug.Log("<<ET>> Sending to Shop");
-        shopCount++;
-        LevelSelectionHandler.PlayNode(getNextNode(LevelSelectionNode.NodeType.Shop));
-        //RunHandler.RunData.currentNode.type = LevelSelectionNode.NodeType.Shop;
-        ////RunHandler.TransitionToShop();
-        //    HasteStats.AddStat(HasteStatType.STAT_SHOPS_VISITED, 1);
-        //    SceneManager.LoadScene("ShopScene", LoadSceneMode.Single);
-    }
-    private static void GoToRest()
-    {
-        Debug.Log("<<ET>> Sending to Rest");
-        restCount++;
-        LevelSelectionHandler.PlayNode(getNextNode(LevelSelectionNode.NodeType.RestStop));
-        //RunHandler.RunData.currentNode.type = LevelSelectionNode.NodeType.RestStop;
-        ////RunHandler.PlayRestScene();
-        //    HasteStats.AddStat(HasteStatType.STAT_REST_VISITED, 1);
-        //    SceneManager.LoadScene("RestScene_Current", LoadSceneMode.Single);
-    }
-    private static void GoToBoss(bool interval = false)
-    {
-        if(interval) Debug.Log("<<ET>> Sending to Boss via Interval");
-        else Debug.Log("<<ET>> Sending to Boss via Chance");
-        bossCount++;
-        OptionsCollector options = new();
-
-        string[] bossScenes = ["Challenge_ForestBoss", "Challenge_DesertBoss", "Challenge_SnakeBoss"];
-
-        WeightedFunc<string> wf = new();
-        if (options.jumperWeight > 0) wf.Add(options.jumperWeight, () => bossScenes[0]);
-        if (options.convoyWeight > 0) wf.Add(options.convoyWeight, () => bossScenes[1]);
-        if (options.snakeWeight > 0) wf.Add(options.snakeWeight, () => bossScenes[2]);
-        String? boss = wf.Run(RunHandler.GetCurrentLevelRandomInstance());
-        int level = 1;
-
-        switch (boss)
-        {
-            case "Challenge_ForestBoss":
-                {
-                    level += jumper[0] ? 1 : 0;
-                    level += jumper[1] ? 1 : 0;
-                }
-                break;
-            case "Challenge_DesertBoss":
-                {
-                    level += convoy[0] ? 1 : 0;
-                    level += convoy[1] ? 1 : 0;
-                }
-                break;
-            case "Challenge_SnakeBoss":
-                {
-                    level += snake[0] ? 1 : 0;
-                    level += snake[1] ? 1 : 0;
-                }
-                break;
-        }
-
-        level = (int)Math.Floor(RunHandler.GetCurrentLevelRandomInstance().NextFloat() * level);
-
-        if (level < 2)
-        {
-            switch (boss)
-            {
-                case "Challenge_ForestBoss":
-                    {
-                        jumper[level] = true;
-                    }
-                    break;
-                case "Challenge_DesertBoss":
-                    {
-                        convoy[level] = true;
-                    }
-                    break;
-                case "Challenge_SnakeBoss":
-                    {
-                        snake[level] = true;
-                    }
-                    break;
-            }
-        }
-
-        RunHandler.config.bossScene = boss;
-        RunHandler.config.bossTeir = level;
-
-        LevelSelectionHandler.PlayNode(getNextNode(LevelSelectionNode.NodeType.Boss));
-
-        //RunHandler.RunData.currentNode.type = LevelSelectionNode.NodeType.Boss;
-        ////RunHandler.TransitionToBoss();
-        //    SceneManager.LoadScene(RunHandler.config.bossScene, LoadSceneMode.Single);
-    }
-    private static void RunNextScene()
-    {
-        OptionsCollector options = new OptionsCollector();
-        bool fromAward = inAward || RunHandler.RunData.currentNode.type == LevelSelectionNode.NodeType.Shop || RunHandler.RunData.currentNode.type == LevelSelectionNode.NodeType.RestStop;
-            inAward = false;
-        int itemCount = RunHandler.RunData.itemData.Count();
-        bool canGetMoreItems = itemCount < options.maxItems;
-
-        bool bossEligible = RunHandler.RunData.currentLevel >= options.bossMinFloors;
-            if(!bossEligible && !options.bossInterval) options.bossNum = 0;
-
-        // Determine if Giving Award, and how many
-        bool giveReward = options.itemsEnabled; // Master Toggle for run-based rewards
-            if (RunHandler.RunData.currentLevel == 1) giveReward = giveReward && options.immediateItem; // If just finished first stage, give item if ImmediateItem setting
-            else giveReward = giveReward && (RunHandler.RunData.currentLevel % options.itemFrequency == 0); // Otherwise check if frequency
-        
-        if (!fromAward && canGetMoreItems && RunHandler.RunData.currentNode.type == LevelSelectionNode.NodeType.Challenge && options.challengeReward)
-        {
-            if (!giveReward) giveReward = true; // If just finished Challenge frag and ChallengeReward, override true
-            else extraReward++; // If already giving reward, signal to give extra reward
-            Debug.Log("<<ET>> Challenge Reward Flag");
-        } 
-        if (!fromAward && canGetMoreItems && RunHandler.RunData.currentNode.type == LevelSelectionNode.NodeType.Boss && options.bossReward)
-        {
-            if (!giveReward) giveReward = true; // If just finished Boss frag and BossReward, override true
-            else extraReward++; // If already giving reward, signal to give extra reward
-            Debug.Log("<<ET>> Boss Reward Flag");
-        }
-
-        // Determine Difficulty Modification
-        if(options.diffControl)
-        {
-            int diff = options.initialDiff;
-            if(options.diffScaleFreq > 0) switch(options.diffScale)
-                {
-                    case DiffScaleEnum.Stage: diff += options.diffScaleRate * (RunHandler.RunData.currentLevel / options.diffScaleFreq);
-                            break;
-                    case DiffScaleEnum.Item: diff += options.diffScaleRate * (itemCount / options.diffScaleFreq);
-                            break;
-                    case DiffScaleEnum.Boss: diff += options.diffScaleRate * (bossCount / options.diffScaleFreq);
-                            break;
-                }
-            RunHandler.config.startDifficulty = diff;
-            RunHandler.config.endDifficulty = diff;
-        }
-
-        bool toAward = false;
-        // Determine if Giving Award
-        if (canGetMoreItems && giveReward && !fromAward)
-        {
-            Debug.Log("<<ET>> Sending to EndlessAward");
-            toAward = true;
-            SceneManager.LoadScene("EndlessAwardScene");
-        }
-        else if (options.bossInterval && bossEligible && (RunHandler.RunData.currentLevel + 1) % options.bossNum == 0)
-        {
-            GoToBoss(true);
-        }
-        else
-        {
-            WeightedAction wa = new WeightedAction();
-            if (options.normalWeight > 0) wa.Add(options.normalWeight, GoToNormal);
-            if (options.challengeWeight > 0) wa.Add(options.challengeWeight, GoToChallenge);
-            if (!options.bossInterval && options.bossNum > 0) wa.Add(options.bossNum, () => GoToBoss(false));
-            if (options.shopWeight > 0) wa.Add(options.shopWeight, GoToShop);
-            if (options.restWeight > 0) wa.Add(options.restWeight, GoToRest);
-            wa.Run(RunHandler.GetCurrentLevelRandomInstance(shopCount + restCount));
-        }
-
-        if (RunHandler.InRun && !fromAward) 
-        {
-            if(!toAward) RunHandler.RunData.currentNodeStatus = NGOPlayer.PlayerNodeStatus.PostLevelScreenComplete;
-
-            int stageHealAmount = GameHandler.Instance.SettingsHandler.GetSetting<HealingCollapsible>().StageHealSetting.Value;
-            int stageLifeFrequency = GameHandler.Instance.SettingsHandler.GetSetting<HealingCollapsible>().StageLifeSetting.Value;
-
-            if (stageHealAmount > 0)
-            {
-                AddHealthReflect(Player.localPlayer, stageHealAmount);
-            }
-            if (stageLifeFrequency > 0 && RunHandler.RunData.currentLevel % stageLifeFrequency == 0)
-            {
-                Player.localPlayer.EditLives(1);
-            }
-        }
     }
 }
 
-internal class WeightedAction
-{
-    public List<int> weights = [];
-    public List<Action> funcs = [];
-
-    public void Add(int weight, Action func)
-    {
-        weights.Add(weight);
-        funcs.Add(func);
-    }
-
-    public void Run(System.Random rand)
-    {
-        int total = 0;
-        weights.ForEach(w => total += w);
-
-        int roll = rand.Next(total);
-        Debug.Log("<<ET>> WeightedAction Total: " + total);
-        Debug.Log("<<ET>> WeightedAction roll: " + roll);
-        for (int i = 0; i < weights.Count; ++i)
-        {
-            roll -= weights[i];
-            if(roll < 0)
-            {
-                funcs[i]();
-                return;
-            } else Debug.Log("<<ET>> Passing " + funcs[i].Method.Name);
-        }
-        Debug.Log("<<ET>> Reached end of WeightedAction without running anything.");
-    }
-}
-internal class WeightedFunc<T>
-{
-    public List<int> weights = [];
-    public List<Func<T>> funcs = [];
-
-    public void Add(int weight, Func<T> func)
-    {
-        weights.Add(weight);
-        funcs.Add(func);
-    }
-
-    public T? Run(System.Random rand)
-    {
-        int total = 0;
-        weights.ForEach(i => total += i);
-
-        int roll = rand.Next(total);
-        Debug.Log("<<ET>> WeightedFunc Total: " + total);
-        Debug.Log("<<ET>> WeightedFunc roll: " + roll);
-        for (int i = 0; i < weights.Count; ++i)
-        {
-            roll -= weights[i];
-            if(roll < 0)
-            {
-                return funcs[i]();
-            }
-        }
-        Debug.Log("<<ET>> Reached end of WeightedFunc without running anything.");
-        return default;
-    }
-}
 internal class OptionsCollector
 {
     public bool modEnabled = GameHandler.Instance.SettingsHandler.GetSetting<ModToggleSetting>().Value == OffOnMode.ON;

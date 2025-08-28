@@ -151,13 +151,13 @@ namespace EndlessTweaker
                 currentType = LevelSelectionNode.NodeType.Challenge;
                 LevelSelectionHandler.PlayNode(getNextNode(currentType));
             });
-            wa.Add(options.shopWeight, () =>
+            if(currentType != LevelSelectionNode.NodeType.Shop) wa.Add(options.shopWeight, () =>
             {
                 Log("Sending to Shop Node");
                 currentType = LevelSelectionNode.NodeType.Shop;
                 LevelSelectionHandler.PlayNode(getNextNode(currentType));
             });
-            wa.Add(options.restWeight, () =>
+            if(currentType!= LevelSelectionNode.NodeType.RestStop) wa.Add(options.restWeight, () =>
             {
                 Log("Sending to Rest Node");
                 currentType = LevelSelectionNode.NodeType.RestStop;
